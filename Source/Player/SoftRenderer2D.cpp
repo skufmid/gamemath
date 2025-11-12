@@ -96,13 +96,40 @@ void SoftRenderer::Render2D()
 			}
 		}
 	}
+	
+	// 각도에 해당하는 sin과 cos 함수 얻기
+	float sin = 0.f, cos = 0.f;
+	Math::GetSinCos(sin, cos, currentDegree);
 
-	// 사각형 그리기
+	// 현재 화면의 크기로부터 길이를 비교할 기준양 정하기
+	static float maxLength = Vector2(_ScreenSize.X, _ScreenSize.Y).Size() * 0.5f;
+
+	// 원을 구성하는 점을 그린다.
 	HSVColor hsv(0.f, 1.f, 0.85f);
 	for (auto const& v : squares)
 	{
-		r.DrawPoint(v, hsv.ToLinearColor());
+		// 극좌표계로 변경한다.
+		Vector2 polarV = v.ToPolarCoordinate();
+
+		// 극좌표계의 각 정보로부터 색상을 결정한다.
+		if (polarV.Y < 0.f)
+		{
+			polarV.Y += Math::TwoPI;
+		}
+		hsv.H = polarV.Y / Math::TwoPI;
+
+		// 극좌표계의 크기 정보로부터 회전량을 결정한다.
+		float ratio = polarV.X / maxLength;
+		float weight = Math::Lerp(1.f, 5.f, ratio);
+
+		// 극좌표계를 사용해 회전을 부여한다.
+		polarV.Y += Math::Deg2Rad(currentDegree) * weight;
+
+		// 최종 값을 데카르트 죄표계로 변환한다.
+		Vector2 cartesianV = polarV.ToCartesianCoordinate();
+		r.DrawPoint(cartesianV, hsv.ToLinearColor());
 	}
+
 
 	// 현재 각도를 화면에 출력
 	r.PushStatisticText(std::string("Degree : ") + std::to_string(currentDegree));
