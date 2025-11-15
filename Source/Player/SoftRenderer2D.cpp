@@ -77,6 +77,9 @@ void SoftRenderer::Update2D(float InDeltaSeconds)
 	static Vector2 targetStart = targetPosition;
 	static Vector2 targetDestination = Vector2(randomPosX(mt), randomPosY(mt));
 
+	// 시야각의 cos 값은 최초 1회만 계산해 보관한다.
+	static float halfFovCos = cosf(Math::Deg2Rad(fovAngle * 0.5f));
+
 	elapsedTime = Math::Clamp(elapsedTime + InDeltaSeconds, 0.f, duration);
 
 	// 지정한 시간이 경과하면 새로운 이동 지점을 랜덤하게 설정
@@ -100,9 +103,21 @@ void SoftRenderer::Update2D(float InDeltaSeconds)
 	Vector2 inputVector = Vector2(input.GetAxis(InputAxis::XAxis), input.GetAxis(InputAxis::YAxis)).GetNormalize();
 	Vector2 deltaPosition = inputVector * moveSpeed * InDeltaSeconds;
 
+	Vector2 f = Vector2::UnitY;
+	Vector2 v = (targetPosition - playerPosition).GetNormalize();
+
 	// 물체의 최종 상태 설정
-	playerColor = LinearColor::Gray;
-	targetColor = LinearColor::Blue;
+	if (v.Dot(f) >= halfFovCos) 
+	{
+		playerColor = LinearColor::Red;
+		playerColor = LinearColor::Red;
+	}
+	else
+	{
+		playerColor = LinearColor::Gray;
+		targetColor = LinearColor::Blue;
+	}
+
 	playerPosition += deltaPosition;
 }
 
