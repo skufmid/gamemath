@@ -154,6 +154,7 @@ void SoftRenderer::Render3D()
 	// 절두체 컬링 테스트를 위한 통계 변수
 	size_t totalObjects = g.GetScene().size();
 	size_t culledObjects = 0;
+	size_t intersectedObjects = 0;
 	size_t renderedObjects = 0;
 
 	for (auto it = g.SceneBegin(); it != g.SceneEnd(); ++it)
@@ -167,21 +168,36 @@ void SoftRenderer::Render3D()
 		// 렌더링에 필요한 게임 오브젝트의 주요 레퍼런스를 얻기
 		const Mesh& mesh = g.GetMesh(gameObject.GetMeshKey());
 		const TransformComponent& transform = gameObject.GetTransform();
+		Matrix4x4 mMatrix = transform.GetModelingMatrix();
 
-		// 절두체 컬링 구현
-		Vector4 viewPos = vMatrix * Vector4(transform.GetPosition());
-		if (frustumFromMatrix.CheckBound(viewPos.ToVector3()) == BoundCheckResult::Outside)
+		LinearColor finalColor = gameObject.GetColor();
+
+		// 바운딩 영역의 크기를 트랜스폼에 맞게 조정
+		Sphere sphereBound = mesh.GetSphereBound();
+		sphereBound.Radius *= transform.GetScale().Max();
+		sphereBound.Center = (vMatrix * mMatrix * Vector4(sphereBound.Center)).ToVector3();
+
+		// 영역을 사용해 절두체 컬링 구현
+		auto checkResult = frustumFromMatrix.CheckBound(sphereBound);
+		if (checkResult == BoundCheckResult::Outside)
 		{
 			// 그리지 않고 건너뜀
 			culledObjects++;
 			continue;
+		}
+		else if (checkResult == BoundCheckResult::Intersect)
+		{
+			// 겹친 게임 오브젝트를 통계에 포함
+			intersectedObjects++;
+			finalColor = LinearColor::Red;
+
 		}
 
 		// 최종 행렬 계산
 		Matrix4x4 finalMatrix = pvMatrix * transform.GetModelingMatrix();
 
 		// 메시 그리기
-		DrawMesh3D(mesh, finalMatrix, gameObject.GetColor());
+		DrawMesh3D(mesh, finalMatrix, finalColor);
 
 		// 그린 물체를 통계에 포함
 		renderedObjects++;
